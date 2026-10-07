@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+_cache/
+.edgeprofile*/
+tests/_tmp/
+tests/_svctest/
+tests/_uiflow/
+*.mforge.bak
+*.mforge.N.bak
+*.mforge_rn
+*.mforge.tmp
+
+# 可再生的测试资产（make_assets.py 生成；_repro 为各专项测试的临时视频）
+tests/assets/
+tests/_repro/

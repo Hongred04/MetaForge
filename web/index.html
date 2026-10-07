@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MetaForge · 图片视频元数据工坊</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M12 7.5 6.5 10.5v5L12 18.5l5.5-3v-5L12 7.5Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" opacity=".55"/>
+    </svg>
+    <div>
+      <h1>MetaForge</h1>
+      <p>图片 / 视频 元数据工坊</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <label class="switch" title="写入前自动生成 .bak 备份">
+      <input type="checkbox" id="optBackup" checked><span>自动备份</span>
+    </label>
+    <button class="btn ghost" id="btnRestore">恢复备份</button>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ── 侧栏：文件列表 ─────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="side-head">
+      <label class="folder-pick">
+        <input type="text" id="folderInput" placeholder="输入文件夹绝对路径…" spellcheck="false">
+        <button class="btn small" id="btnScan">扫描</button>
+      </label>
+      <div class="side-tools">
+        <input type="text" id="filterInput" placeholder="筛选文件名…" spellcheck="false">
+        <label class="check"><input type="checkbox" id="chkRecursive"><span>含子目录</span></label>
+      </div>
+      <div class="side-stats">
+        <span id="statCount">0 个文件</span>
+        <span class="dot"></span>
+        <button class="link" id="btnSelAll">全选</button>
+        <button class="link" id="btnSelNone">清空</button>
+        <span class="dot"></span>
+        <span id="statSel">已选 0</span>
+      </div>
+    </div>
+    <div class="file-list" id="fileList">
+      <div class="empty">输入文件夹路径后点击「扫描」开始</div>
+    </div>
+  </aside>
+
+  <!-- ── 主区 ────────────────────────────── -->
+  <section class="content" id="content">
+    <div class="welcome" id="welcome">
+      <div class="welcome-card">
+        <h2>选择一个文件开始</h2>
+        <p>左侧扫描后点击任意文件，即可查看并修改其全部元数据。<br>
+           支持 JPEG / PNG / WebP / TIFF / HEIC 图片，以及 MP4 / MOV / M4V / 3GP 视频。</p>
+        <ul class="feat">
+          <li><b>完整读写</b>EXIF · GPS · XMP · IPTC</li>
+          <li><b>视频原子级</b>ilst 标签与封面图</li>
+          <li><b>厂商标签</b>保留 Android Keys 等私有字段</li>
+          <li><b>隐私清理</b>三档强度可一键抹除痕迹</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="editor" id="editor" hidden>
+      <!-- 头部 -->
+      <div class="ed-head">
+        <div class="prev-box">
+          <img id="preview" alt="预览">
+          <div class="prev-ph" id="prevPh">无封面</div>
+          <div class="prev-tools">
+            <button class="btn tiny" id="btnSetCover">设为封面</button>
+            <button class="btn tiny" id="btnClearCover">移除封面</button>
+          </div>
+        </div>
+        <div class="ed-title">
+          <h2 id="edName">—</h2>
+          <div class="chips" id="edChips"></div>
+          <p class="path" id="edPath"></p>
+          <div class="ed-nav">
+            <button class="btn ghost tiny" id="btnPrev">← 上一个</button>
+            <span id="edPos"></span>
+            <button class="btn ghost tiny" id="btnNext">下一个 →</button>
+            <label class="switch tiny"><input type="checkbox" id="chkApplyAll"><span>改动应用到所有已选</span></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="ed-tabs" id="edTabs">
+        <button class="tab active" data-tab="basic">基础信息</button>
+        <button class="tab" data-tab="gps">GPS 定位</button>
+        <button class="tab" data-tab="exif">EXIF 详情</button>
+        <button class="tab" data-tab="raw">原始标签</button>
+        <button class="tab" data-tab="privacy">隐私清理</button>
+        <button class="tab" data-tab="rename">批量重命名</button>
+      </div>
+
+      <div class="ed-body">
+        <!-- 基础信息 -->
+        <div class="pane active" data-pane="basic">
+          <div class="grid" id="basicGrid"></div>
+          <div class="field-block" id="exifEditBlock">
+            <h4>EXIF 字段</h4>
+            <p class="hint">留空表示不修改。修改后点击底部「保存到文件」。</p>
+            <div class="grid" id="exifEditGrid"></div>
+          </div>
+          <div class="field-block" id="videoTagBlock">
+            <h4>视频标签（ilst）</h4>
+            <p class="hint">这些是播放器与资源管理器显示的标签。留空表示不修改。</p>
+            <div class="grid" id="videoTags"></div>
+          </div>
+          <div class="field-block">
+            <h4>XMP 数据</h4>
+            <p class="hint">Adobe XMP 通用元数据，跨软件互通使用。留空则不修改。</p>
+            <textarea id="xmpInput" rows="6" placeholder="&lt;x:xmpmeta&gt;…&lt;/x:xmpmeta&gt;"></textarea>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div class="pane" data-pane="gps">
+          <div class="gps-layout">
+            <div class="gps-form">
+              <div class="field-block">
+                <h4>坐标</h4>
+                <p class="hint">支持十进制度（31.2304, 121.4737）或 ISO-6709（+31.2304+121.4737/）。</p>
+                <input type="text" id="gpsInput" placeholder="31.2304, 121.4737" spellcheck="false">
+                <div class="row">
+                  <label>纬度<input type="number" step="any" id="gpsLat" placeholder="31.2304"></label>
+                  <label>经度<input type="number" step="any" id="gpsLon" placeholder="121.4737"></label>
+                  <label>海拔 m<input type="number" step="any" id="gpsAlt" placeholder="可选"></label>
+                </div>
+                <div class="btn-row">
+                  <button class="btn primary" id="btnSaveGps">写入 GPS</button>
+                  <button class="btn danger ghost" id="btnClearGps">清除 GPS</button>
+                </div>
+              </div>
+              <div class="field-block">
+                <h4>当前定位</h4>
+                <div id="gpsStatus" class="gps-status">—</div>
+                <a id="gpsMapLink" target="_blank" rel="noreferrer" hidden>在地图中打开 ↗</a>
+              </div>
+            </div>
+            <div class="gps-side">
+              <h4>坐标说明</h4>
+              <ul class="tips">
+                <li><b>S / W 半球</b>：南纬与西经用负数表示，系统自动写入正确参考位。</li>
+                <li><b>写入格式</b>：图片同时写 GPS IFD；视频同时写 <code>©xyz</code> 与 <code>loci</code>。</li>
+                <li><b>隐私</b>：一旦分享位置，此处务必执行「隐私清理」。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- EXIF -->
+        <div class="pane" data-pane="exif">
+          <p class="hint bar">此页为只读，用于核对文件里实际存在的全部 EXIF 字段。修改请到「基础信息」页。</p>
+          <div class="kv" id="exifView"></div>
+          <div id="gpsRawView"></div>
+          <div id="keysView"></div>
+        </div>
+
+        <!-- 原始标签 -->
+        <div class="pane" data-pane="raw">
+          <p class="hint bar">当前文件识别到的全部元数据键，用于排查未知标签或厂商私有字段。</p>
+          <div class="kv" id="rawView"></div>
+          <div class="field-block">
+            <h4>XMP 原文</h4>
+            <textarea id="xmpRaw" rows="12" spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- 隐私 -->
+        <div class="pane" data-pane="privacy">
+          <div class="field-block">
+            <h4>清理强度</h4>
+            <div class="presets" id="presets"></div>
+            <div class="preset-desc" id="presetDesc"></div>
+            <div class="btn-row">
+              <button class="btn danger" id="btnScrub">对已选文件执行清理</button>
+              <span class="hint inline" id="scrubHint"></span>
+            </div>
+          </div>
+          <div class="field-block">
+            <h4>清理报告会移除的内容</h4>
+            <ul class="tips wide">
+              <li><b>GPS</b>　经纬度、海拔、定位方式</li>
+              <li><b>设备</b>　制造商、机型、镜头型号与序列号、机身序列号</li>
+              <li><b>软件</b>　软件名、编码工具、固件</li>
+              <li><b>身份</b>　作者、艺术家、版权、备注、自定义描述</li>
+              <li><b>时间</b>　拍摄与数字化时间（strict 档）</li>
+              <li><b>厂商私有</b>　MakerNote、厂商 Keys box</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 重命名 -->
+        <div class="pane" data-pane="rename">
+          <div class="field-block">
+            <h4>命名模板</h4>
+            <p class="hint">用 <code>{变量}</code> 组合。执行范围为左侧已选文件。</p>
+            <div class="row">
+              <input type="text" id="rnTemplate" value="{创建日期}_{序号2}_{文件名}" spellcheck="false">
+              <label class="slim">起始<input type="number" id="rnStart" value="1"></label>
+              <label class="slim">步长<input type="number" id="rnStep" value="1"></label>
+              <button class="btn" id="btnRnPlan">预览</button>
+              <button class="btn primary" id="btnRnExec">执行重命名</button>
+            </div>
+            <div class="var-chips" id="rnVars"></div>
+          </div>
+          <div class="field-block">
+            <h4>预览</h4>
+            <div class="rn-list" id="rnList"><div class="empty small">点击「预览」生成重命名方案</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部操作 -->
+      <div class="ed-foot" id="edFoot">
+        <div class="foot-info" id="footInfo">未修改</div>
+        <div class="btn-row">
+          <button class="btn ghost" id="btnRevert">放弃改动</button>
+          <button class="btn primary" id="btnSave">保存到文件</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast-wrap" id="toasts"></div>
+<div class="modal" id="coverModal" hidden>
+  <div class="modal-box">
+    <h3>设置封面 / 内嵌预览</h3>
+    <div class="drop" id="coverDrop">
+      <img id="coverPrev" hidden>
+      <p>点击选择图片，或拖拽到此处<br><small>支持 JPG / PNG，建议 1:1 或 16:9</small></p>
+      <input type="file" id="coverFile" accept="image/*" hidden>
+    </div>
+    <div class="btn-row right">
+      <button class="btn ghost" id="coverCancel">取消</button>
+      <button class="btn primary" id="coverOk" disabled>应用</button>
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
